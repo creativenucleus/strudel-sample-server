@@ -9,7 +9,7 @@ This was built for me, so it's not refined for other users just now!
 Starts a local server to provide samples to Strudel. Example:
 
 ```cli
-.\strudel-sample-server.exe -port 5000 -sources "banginsamples|/my/samples/strudel.json"
+.\strudel-sample-server.exe --port 5000 --sources "banginsamples|/my/samples/strudel.json"
 ```
 
 ```strudel
@@ -20,11 +20,11 @@ $: s("noice")
 
 ## Arguments
 
-### -port (optional)
+### --port (optional)
 
 `--port 1234`
 
-### -sources
+### --sources
 
 `--sources "alias|/path/to/strudel.json"`
 
