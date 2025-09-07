@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,7 +24,7 @@ func main() {
 			&cli.StringSliceFlag{
 				Name:  "sources",
 				Value: []string{"./"},
-				Usage: "strudel.jsons to serve",
+				Usage: "alias:path-to-strudel.json to serve (this can be specified multiple times)",
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -46,31 +45,44 @@ func main() {
 }
 
 func serve(port int, paths []string) error {
-	fmt.Printf("Serving from port [%d]\n", port)
-
 	if len(paths) == 0 {
 		return fmt.Errorf("no source paths provided")
 	}
 
-	if len(paths) > 1 {
-		return fmt.Errorf("Currently only one source path is supported")
-	}
-
-	sampleMap := make(strudelSampleMap)
+	// Load all sample packs into memory
+	samplePacks := map[string]samplepack{}
 	for _, path := range paths {
-		fmt.Printf(" <- directory [%s]\n", path)
+		parts := strings.Split(path, "|")
+		if len(parts) != 2 {
+			return fmt.Errorf("source path [%s] is not in the correct format (alias|path-to-strudel.json)", path)
+		}
 
-		var err error
-		sampleMap, err = addToStrudelSampleMap(sampleMap, path)
+		packAlias := parts[0]
+		sourcePath := parts[1]
+
+		samplePack, err := readToStrudelSamplePack(sourcePath)
 		if err != nil {
 			return err
 		}
+
+		samplePacks[packAlias] = *samplePack
 	}
-	sampleMap["_base"] = []string{fmt.Sprintf("http://localhost:%d/", port)}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		out, err := json.Marshal(sampleMap)
+	router.HandleFunc(`/favicon.ico`, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK) // nerfed
+	})
+	router.HandleFunc("/{packAlias}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r) // Get route variables
+		packAlias := vars["packAlias"]
+
+		samplePack, ok := samplePacks[packAlias]
+		if !ok {
+			http.Error(w, fmt.Sprintf("unknown sample pack alias [%s]", packAlias), http.StatusNotFound)
+			return
+		}
+
+		out, err := samplePack.toData(fmt.Sprintf("http://localhost:%d/%s/", port, packAlias))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -88,13 +100,17 @@ func serve(port int, paths []string) error {
 			return
 		}
 	})
-	router.HandleFunc(`/favicon.ico`, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK) // nerfed
-	})
-	router.HandleFunc(`/{samplePath:.+}`, func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(`/{packAlias}/{samplePath:.+}`, func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r) // Get route variables
+		packAlias := vars["packAlias"]
+
+		samplePack, ok := samplePacks[packAlias]
+		if !ok {
+			http.Error(w, fmt.Sprintf("unknown sample pack alias [%s]", packAlias), http.StatusNotFound)
+			return
+		}
+
 		samplePath := vars["samplePath"]
-		fmt.Printf("Serving sample [%s]\n", samplePath)
 
 		setOpenCORSHeaders(w)
 		if r.Method == http.MethodOptions {
@@ -102,7 +118,9 @@ func serve(port int, paths []string) error {
 			return
 		}
 
-		samplePathFull := fmt.Sprintf(`%s\%s`, filepath.Dir(paths[0]), samplePath)
+		fmt.Printf("Serving sample [%s : %s]\n", packAlias, samplePath)
+		// filepath!
+		samplePathFull := fmt.Sprintf(`%s\%s`, samplePack.pathBase, samplePath)
 		fmt.Println(samplePathFull)
 		http.ServeFile(w, r, samplePathFull)
 	})
@@ -112,6 +130,11 @@ func serve(port int, paths []string) error {
 		Addr:         fmt.Sprintf("localhost:%d", port),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
+	}
+
+	fmt.Printf("Serving from port [%d]\n", port)
+	for alias, pack := range samplePacks {
+		fmt.Printf(" - /%s = %d samples\n", alias, len(pack.sampleMap))
 	}
 
 	err := srv.ListenAndServe()
