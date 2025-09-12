@@ -1,6 +1,10 @@
 # Strudel Tasting Tray
 
-Serves samples for Strudel locally. I tried a couple of other solutions, but they didn't suit.
+Serving Strudel samples!
+
+This program sets up a local server to provide samples on localhost for use in [Strudel](https://strudel.cc/). I tried a couple of other solutions, but they didn't suit for different reasons.
+
+I wanted an easy way to serve named, and multiple, sample sets.
 
 This was built for me, so it's not refined for other users just now!
 
