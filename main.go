@@ -52,9 +52,9 @@ func serve(port int, paths []string) error {
 	// Load all sample packs into memory
 	samplePacks := map[string]samplepack{}
 	for _, path := range paths {
-		parts := strings.Split(path, "|")
+		parts := strings.Split(path, "<-")
 		if len(parts) != 2 {
-			return fmt.Errorf("source path [%s] is not in the correct format (alias|path-to-strudel.json)", path)
+			return fmt.Errorf("source path [%s] is not in the correct format (alias<-path-to-strudel.json)", path)
 		}
 
 		packAlias := parts[0]
