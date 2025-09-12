@@ -1,4 +1,4 @@
-module github.com/creativenucleus/strudel-sample-server
+module github.com/creativenucleus/strudel-tasting-tray
 
 go 1.24.4
 

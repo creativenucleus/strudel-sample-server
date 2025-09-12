@@ -1,0 +1,11 @@
+{
+	"_base": "https://example.com/mysamplepack/",
+	"breaks": [
+		"samples/amen.wav",
+		"samples/think.wav"
+	],
+    "vox": [
+		"samples/woo.wav",
+		"samples/aah.wav"
+    ]
+}

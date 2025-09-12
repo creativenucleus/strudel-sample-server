@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/creativenucleus/strudel-sample-server/internal/types"
+	"github.com/creativenucleus/strudel-tasting-tray/internal/types"
 )
 
 type samplepack struct {
